@@ -160,10 +160,10 @@ FROM
                     ) TranAmount, 
                     0 PayPlanAmount, 
                     ( -- this will equate to 0 if the claim has been received, otherwise it's the writeoff (the writeoff is auto populated with the estimate before the claim is received)
-                        CASE WHEN cp.procdate <= '2025-02-10' AND (cp.status = 0 OR (cp.status = 1 AND cp.datecp > '2025-02-10')) THEN cp.writeoff ELSE 0 END -- Manually
+                        CASE WHEN cp.procdate <= '2025-02-10' AND (cp.status = 0 OR (cp.status = 1 AND cp.datecp > '2025-02-10')) THEN cp.writeoff ELSE 0 END -- Manually enter when not current date
                     ) InsWoEst, 
                     ( -- this will equate to 0 if the claim has been received, otherwise it's the insurance pay estimate
-                        CASE WHEN cp.procdate <= '2025-02-10' AND (cp.status = 0 OR (cp.status = 1 AND cp.datecp > '2025-02-10')) THEN cp.inspayest ELSE 0 END -- Manually
+                        CASE WHEN cp.procdate <= '2025-02-10' AND (cp.status = 0 OR (cp.status = 1 AND cp.datecp > '2025-02-10')) THEN cp.inspayest ELSE 0 END -- Manually enter when not current date
                     ) InsPayEst, 
                     0 AgedProcNum, 
                     '0001-01-01' AgedProcDate 
@@ -215,7 +215,7 @@ FROM
                     FROM 
                     paysplit ps 
                     WHERE 
-                    ps.splitamt != 0 AND and ps.datepay <= '2025-02-10' -- Manually
+                    ps.splitamt != 0 AND and ps.datepay <= '2025-02-10' -- Manually enter when not current date
                     UNION ALL 
                     SELECT 
                     'PPCharge' TranType, 
@@ -232,7 +232,7 @@ FROM
                     payplancharge ppc 
                     INNER JOIN payplan pp ON ppc.payplannum = pp.payplannum 
                     WHERE 
-                    ppc.chargedate <= '2025-02-20' -- Manually 10 days out from current date
+                    ppc.chargedate <= '2025-02-20' -- 10 days out from the current date
                     AND ppc.chargetype = 0 
                     AND ppc.principal + ppc.interest != 0 
                     AND pp.plannum = 0 -- must be non-standard payment plan
@@ -278,7 +278,7 @@ FROM
 -- END guarAging
 INNER JOIN patient ON patient.patnum = guarAging.patnum 
 WHERE 
-(
+( -- As it stands this is excluding patients with negative balances and insurance estimates with no balance. I can modify what's included here if needed.
     guarAging.balover90 >= 0.005 
     OR guarAging.bal_61_90 >= 0.005 
     OR guarAging.bal_31_60 >= 0.005 
