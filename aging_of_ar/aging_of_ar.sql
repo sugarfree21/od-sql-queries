@@ -104,7 +104,7 @@ FROM
                 AND trans.trandate <= '2025-02-10' THEN trans.tranamount ELSE 0 END
             ) TotalCredits, 
             Sum(
-                CASE WHEN trans.tranamount != 0 THEN trans.tranamount ELSE 0 END
+                CASE WHEN trans.tranamount != 0 AND trans.trandate <= '2025-02-10' THEN trans.tranamount ELSE 0 END -- Manually enter when not current date
             ) BalTotal, 
             Sum(trans.inswoest) InsWoEst, 
             Sum(trans.inspayest) InsPayEst, 
@@ -160,10 +160,10 @@ FROM
                     ) TranAmount, 
                     0 PayPlanAmount, 
                     ( -- this will equate to 0 if the claim has been received, otherwise it's the writeoff (the writeoff is auto populated with the estimate before the claim is received)
-                        CASE WHEN cp.status = 0 THEN cp.writeoff ELSE 0 END
+                        CASE WHEN cp.procdate <= '2025-02-10' AND (cp.status = 0 OR (cp.status = 1 AND cp.datecp > '2025-02-10')) THEN cp.writeoff ELSE 0 END -- Manually
                     ) InsWoEst, 
                     ( -- this will equate to 0 if the claim has been received, otherwise it's the insurance pay estimate
-                        CASE WHEN cp.status = 0 THEN cp.inspayest ELSE 0 END
+                        CASE WHEN cp.procdate <= '2025-02-10' AND (cp.status = 0 OR (cp.status = 1 AND cp.datecp > '2025-02-10')) THEN cp.inspayest ELSE 0 END -- Manually
                     ) InsPayEst, 
                     0 AgedProcNum, 
                     '0001-01-01' AgedProcDate 
@@ -215,7 +215,7 @@ FROM
                     FROM 
                     paysplit ps 
                     WHERE 
-                    ps.splitamt != 0 
+                    ps.splitamt != 0 AND and ps.datepay <= '2025-02-10' -- Manually
                     UNION ALL 
                     SELECT 
                     'PPCharge' TranType, 
@@ -232,7 +232,7 @@ FROM
                     payplancharge ppc 
                     INNER JOIN payplan pp ON ppc.payplannum = pp.payplannum 
                     WHERE 
-                    ppc.chargedate <= '2025-02-20' 
+                    ppc.chargedate <= '2025-02-20' -- Manually 10 days out from current date
                     AND ppc.chargetype = 0 
                     AND ppc.principal + ppc.interest != 0 
                     AND pp.plannum = 0 -- must be non-standard payment plan

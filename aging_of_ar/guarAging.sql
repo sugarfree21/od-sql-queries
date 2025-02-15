@@ -3,7 +3,9 @@
 SELECT * FROM (
     SELECT 
         tSums.patnum, 
-        Round( -- I think this is assuming that if they've paid anything at all then it goes to the oldest aging first. 
+        --  All of these case statements are essentially taking the total credit and applying to the charge buckets, beginning with 90+, until the credit is gone. 
+        -- So even if it's the procedures that are 90+ days old that haven't gotten paid yet, all of it would be considered 0-30 aging. 
+        Round(
             CASE 
                 WHEN tSums.totalcredits >= tSums.chargesover90 THEN 0 
                 ELSE tSums.chargesover90 - tSums.totalcredits 
