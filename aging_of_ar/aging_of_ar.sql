@@ -215,7 +215,7 @@ FROM
                     FROM 
                     paysplit ps 
                     WHERE 
-                    ps.splitamt != 0 AND and ps.datepay <= '2025-02-10' -- Manually enter when not current date
+                    ps.splitamt != 0 AND  ps.datepay <= '2025-02-10' -- Manually enter when not current date
                     UNION ALL 
                     SELECT 
                     'PPCharge' TranType, 

@@ -129,7 +129,7 @@ SELECT * from (
                     CASE WHEN cp.procdate <= '2025-02-10' AND (cp.status = 0 OR (cp.status = 1 AND cp.datecp > '2025-02-10')) THEN cp.writeoff ELSE 0 END -- Manually enter when not current date
                     ) InsWoEst, 
                     ( -- this will equate to 0 if the claim has been received, otherwise it's the insurance pay estimate
-                    CASE WHEN cp.procdate <= '2025-02-10' AND (cp.status = 0 OR (cp.status = 1 AND cp.datecp > '2025-02-10')) THEN cp.writeoff ELSE 0 END -- Manually enter when not current date
+                    CASE WHEN cp.procdate <= '2025-02-10' AND (cp.status = 0 OR (cp.status = 1 AND cp.datecp > '2025-02-10')) THEN cp.inspayest ELSE 0 END -- Manually enter when not current date
                     ) InsPayEst, 
                     0 AgedProcNum, 
                     '0001-01-01' AgedProcDate 
@@ -181,7 +181,7 @@ SELECT * from (
                 FROM 
                     paysplit ps 
                 WHERE 
-                    ps.splitamt != 0 AND and ps.datepay <= '2025-02-10' -- Manually enter when not current date
+                    ps.splitamt != 0 AND ps.datepay <= '2025-02-10' -- Manually enter when not current date
                 UNION ALL 
                 SELECT 
                     'PPCharge' TranType, 
