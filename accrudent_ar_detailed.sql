@@ -1,5 +1,4 @@
--- Positive number is what they owe us, negative number is what they have paid us
-SET @query_date = '2024-12-31'; -- The report will include this date
+SET @query_date = '2024-12-31'; -- This date is included
 SET @ten_days_forward = date_add(@query_date, INTERVAL 10 DAY);
 SET @30_days_back = date_add(@query_date, INTERVAL -30 DAY);
 SET @60_days_back = date_add(@query_date, INTERVAL -60 DAY);
@@ -11,6 +10,7 @@ SELECT
     ptsumnopaymt.Ins_61_90,
     ptsumnopaymt.Ins_31_60,
     ptsumnopaymt.Ins_0_30,
+    -- The following CASE statements are essentially taking the money in TotalPayments and applying it to each Patient bucket, starting with 90+, until the money is gone. Negative balances are eventually 0ed out, and that total is tracked in the Ap section.
     Round(
         CASE 
             WHEN ptsumnopaymt.totalpayments >= ptsumnopaymt.patover90 THEN 0 
@@ -62,7 +62,8 @@ FROM (
         SUM(
             (CASE WHEN procsummaries.procdate <= @query_date AND procsummaries.procdate >= @30_days_back THEN procsummaries.instotest ELSE 0 END)
         ) Ins_0_30,
-        SUM( -- This is where we offset the full cost of the payment plan so that we can look at it elsewhere. We're also adding in adjustments based on procedure date. The last step here is to apply patient payments before we have our patient AR. 
+        -- This is where we offset the full cost of the payment plan so that we can look at it elsewhere. We're also adding in adjustments based on procedure date. The last step here is to apply patient payments before we have our patient AR. 
+        SUM( 
             (CASE WHEN (procsummaries.trantype = 'ProcSum' OR procsummaries.trantype = 'PPOffset' OR procsummaries.trantype = 'Adj') AND procsummaries.procdate < @90_days_back THEN procsummaries.tranamount - procsummaries.instotest ELSE 0 END)
         ) PatOver90,
         SUM(
@@ -74,12 +75,10 @@ FROM (
         SUM(
             (CASE WHEN (procsummaries.trantype = 'ProcSum' OR procsummaries.trantype = 'PPOffset' OR procsummaries.trantype = 'Adj') AND (procsummaries.procdate <= @query_date AND procsummaries.procdate >= @30_days_back) THEN procsummaries.tranamount - procsummaries.instotest ELSE 0 END)
         ) Pat_0_30,
-        -- SUM(CASE WHEN procsummaries.trantype = 'Adj' AND procsummaries.procnum = 0 THEN procsummaries.tranamount ELSE 0 END) ExtraAdj,
         - SUM(CASE WHEN procsummaries.trantype = 'PatPay' THEN procsummaries.tranamount ELSE 0 END) TotalPayments,
         (CASE WHEN ROUND(SUM(procsummaries.tranamount), 2) >= 0 THEN ROUND(SUM(procsummaries.tranamount), 2) ELSE 0 END) TotalArBalance,
         (CASE WHEN ROUND(SUM(procsummaries.tranamount), 2) < 0 THEN ROUND(SUM(procsummaries.tranamount), 2) ELSE 0 END) TotalApBalance,
         SUM(procsummaries.payplanamount) TotalPayPlan,
-        -- SUM(procsummaries.instotest) InsTotEst,
         SUM(procsummaries.inspayest) InsPayEst,
         SUM(procsummaries.inswoest) InsWoEst
     FROM (
@@ -94,7 +93,6 @@ FROM (
             SUM(tranbyproc.InsTotEst) InsTotEst,
             SUM(tranbyproc.InsPayEst) InsPayEst,
             SUM(tranbyproc.InsWoEst) InsWoEst
-            -- (CASE WHEN TranAmount > 0 THEN "Charge" ELSE "Credit" END) CC
         FROM (
             -- Complete procedures, not filtered by whether or not they've been paid. 
             SELECT 
