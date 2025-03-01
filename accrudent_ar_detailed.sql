@@ -42,8 +42,8 @@ SELECT
         END, 
         2
     ) Pat_0_30,
-    ptsumnopaymt.TotalArBalance,
-    ptsumnopaymt.TotalApBalance,
+    (CASE WHEN ptsumnopaymt.totalbalance > 0 THEN ptsumnopaymt.totalbalance ELSE 0 END) TotalArBalance,
+    (CASE WHEN ptsumnopaymt.totalbalance < 0 THEN ptsumnopaymt.totalbalance ELSE 0 END) TotalApBalance,
     ptsumnopaymt.TotalPayPlan,
     ptsumnopaymt.InsPayEst,
     ptsumnopaymt.InsWoEst
@@ -76,8 +76,7 @@ FROM (
             (CASE WHEN (procsummaries.trantype = 'ProcSum' OR procsummaries.trantype = 'PPOffset' OR procsummaries.trantype = 'Adj') AND (procsummaries.procdate <= @query_date AND procsummaries.procdate >= @30_days_back) THEN procsummaries.tranamount - procsummaries.instotest ELSE 0 END)
         ) Pat_0_30,
         - SUM(CASE WHEN procsummaries.trantype = 'PatPay' THEN procsummaries.tranamount ELSE 0 END) TotalPayments,
-        (CASE WHEN ROUND(SUM(procsummaries.tranamount), 2) >= 0 THEN ROUND(SUM(procsummaries.tranamount), 2) ELSE 0 END) TotalArBalance,
-        (CASE WHEN ROUND(SUM(procsummaries.tranamount), 2) < 0 THEN ROUND(SUM(procsummaries.tranamount), 2) ELSE 0 END) TotalApBalance,
+        ROUND(SUM(procsummaries.tranamount), 2) TotalBalance,
         SUM(procsummaries.payplanamount) TotalPayPlan,
         SUM(procsummaries.inspayest) InsPayEst,
         SUM(procsummaries.inswoest) InsWoEst
@@ -234,4 +233,5 @@ FROM (
         procsummaries.patnum
 ) ptsumnopaymt
 WHERE
-    ptsumnopaymt.TotalArBalance != 0 OR ptsumnopaymt.TotalApBalance != 0
+    ptsumnopaymt.TotalBalance != 0
+    -- ptsumnopaymt.TotalArBalance != 0 OR ptsumnopaymt.TotalApBalance != 0
