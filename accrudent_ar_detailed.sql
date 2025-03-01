@@ -3,42 +3,52 @@ SET @ten_days_forward = date_add(@query_date, INTERVAL 10 DAY);
 SET @30_days_back = date_add(@query_date, INTERVAL -30 DAY);
 SET @60_days_back = date_add(@query_date, INTERVAL -60 DAY);
 SET @90_days_back = date_add(@query_date, INTERVAL -90 DAY);
+SET @120_days_back = date_add(@query_date, INTERVAL -120 DAY);
 
 SELECT
     ptsumnopaymt.patnum,
-    ptsumnopaymt.InsOver90,
+    ptsumnopaymt.InsOver120,
+    ptsumnopaymt.Ins_91_120,
     ptsumnopaymt.Ins_61_90,
     ptsumnopaymt.Ins_31_60,
     ptsumnopaymt.Ins_0_30,
     -- The following CASE statements are essentially taking the money in TotalPayments and applying it to each Patient bucket, starting with 90+, until the money is gone. Negative balances are eventually 0ed out, and that total is tracked in the Ap section.
     Round(
         CASE 
-            WHEN ptsumnopaymt.totalpayments >= ptsumnopaymt.patover90 THEN 0 
-            ELSE ptsumnopaymt.patover90 - ptsumnopaymt.totalpayments 
+            WHEN ptsumnopaymt.totalpayments >= ptsumnopaymt.patover120 THEN 0 
+            ELSE ptsumnopaymt.patover120 - ptsumnopaymt.totalpayments 
         END, 
         2
-    ) PatOver90, 
+    ) PatOver120,
     Round(
         CASE 
-            WHEN ptsumnopaymt.totalpayments <= ptsumnopaymt.patover90 THEN ptsumnopaymt.pat_61_90 
-            WHEN ptsumnopaymt.patover90 + ptsumnopaymt.pat_61_90 <= ptsumnopaymt.totalpayments THEN 0 
-            ELSE ptsumnopaymt.patover90 + ptsumnopaymt.pat_61_90 - ptsumnopaymt.totalpayments 
+            WHEN ptsumnopaymt.totalpayments <= ptsumnopaymt.patover120 THEN ptsumnopaymt.pat_91_120 
+            WHEN ptsumnopaymt.patover120 + ptsumnopaymt.pat_91_120 <= ptsumnopaymt.totalpayments THEN 0 
+            ELSE ptsumnopaymt.patover120 + ptsumnopaymt.pat_91_120 - ptsumnopaymt.totalpayments 
+        END, 
+        2
+    ) Pat_91_120,  
+    Round(
+        CASE 
+            WHEN ptsumnopaymt.totalpayments <= ptsumnopaymt.patover120 + ptsumnopaymt.pat_91_120 THEN ptsumnopaymt.pat_61_90 
+            WHEN ptsumnopaymt.patover120 + ptsumnopaymt.pat_91_120 + ptsumnopaymt.pat_61_90 <= ptsumnopaymt.totalpayments THEN 0 
+            ELSE ptsumnopaymt.patover120 + ptsumnopaymt.pat_91_120 + ptsumnopaymt.pat_61_90 - ptsumnopaymt.totalpayments 
         END, 
         2
     ) Pat_61_90, 
     Round(
         CASE 
-            WHEN ptsumnopaymt.totalpayments < ptsumnopaymt.patover90 + ptsumnopaymt.pat_61_90 THEN ptsumnopaymt.pat_31_60 
-            WHEN ptsumnopaymt.patover90 + ptsumnopaymt.pat_61_90 + ptsumnopaymt.pat_31_60 <= ptsumnopaymt.totalpayments THEN 0 
-            ELSE ptsumnopaymt.patover90 + ptsumnopaymt.pat_61_90 + ptsumnopaymt.pat_31_60 - ptsumnopaymt.totalpayments 
+            WHEN ptsumnopaymt.totalpayments < ptsumnopaymt.patover120 + ptsumnopaymt.pat_91_120 + ptsumnopaymt.pat_61_90 THEN ptsumnopaymt.pat_31_60 
+            WHEN ptsumnopaymt.patover120 + ptsumnopaymt.pat_91_120 + ptsumnopaymt.pat_61_90 + ptsumnopaymt.pat_31_60 <= ptsumnopaymt.totalpayments THEN 0 
+            ELSE ptsumnopaymt.patover120 + ptsumnopaymt.pat_91_120 + ptsumnopaymt.pat_61_90 + ptsumnopaymt.pat_31_60 - ptsumnopaymt.totalpayments 
         END, 
         2
     ) Pat_31_60, 
     Round(
         CASE 
-            WHEN ptsumnopaymt.totalpayments < ptsumnopaymt.patover90 + ptsumnopaymt.pat_61_90 + ptsumnopaymt.pat_31_60 THEN ptsumnopaymt.pat_0_30 
-            WHEN ptsumnopaymt.patover90 + ptsumnopaymt.pat_61_90 + ptsumnopaymt.pat_31_60 + ptsumnopaymt.pat_0_30 <= ptsumnopaymt.totalpayments THEN 0 
-            ELSE ptsumnopaymt.patover90 + ptsumnopaymt.pat_61_90 + ptsumnopaymt.pat_31_60 + ptsumnopaymt.pat_0_30 - ptsumnopaymt.totalpayments 
+            WHEN ptsumnopaymt.totalpayments < ptsumnopaymt.patover120 + ptsumnopaymt.pat_91_120 + ptsumnopaymt.pat_61_90 + ptsumnopaymt.pat_31_60 THEN ptsumnopaymt.pat_0_30 
+            WHEN ptsumnopaymt.patover120 + ptsumnopaymt.pat_91_120 + ptsumnopaymt.pat_61_90 + ptsumnopaymt.pat_31_60 + ptsumnopaymt.pat_0_30 <= ptsumnopaymt.totalpayments THEN 0 
+            ELSE ptsumnopaymt.patover120 + ptsumnopaymt.pat_91_120 + ptsumnopaymt.pat_61_90 + ptsumnopaymt.pat_31_60 + ptsumnopaymt.pat_0_30 - ptsumnopaymt.totalpayments 
         END, 
         2
     ) Pat_0_30,
@@ -51,8 +61,11 @@ FROM (
     SELECT
         procsummaries.patnum,
         SUM(
-            (CASE WHEN procsummaries.procdate < @90_days_back THEN procsummaries.instotest ELSE 0 END)
-        ) InsOver90,
+            (CASE WHEN procsummaries.procdate < @120_days_back THEN procsummaries.instotest ELSE 0 END)
+        ) InsOver120,
+        SUM(
+            (CASE WHEN procsummaries.procdate < @90_days_back AND procsummaries.procdate >= @120_days_back THEN procsummaries.instotest ELSE 0 END)
+        ) Ins_91_120,
         SUM(
             (CASE WHEN procsummaries.procdate < @60_days_back AND procsummaries.procdate >= @90_days_back THEN procsummaries.instotest ELSE 0 END)
         ) Ins_61_90,
@@ -64,8 +77,11 @@ FROM (
         ) Ins_0_30,
         -- This is where we offset the full cost of the payment plan so that we can look at it elsewhere. We're also adding in adjustments based on procedure date. The last step here is to apply patient payments before we have our patient AR. 
         SUM( 
-            (CASE WHEN (procsummaries.trantype = 'ProcSum' OR procsummaries.trantype = 'PPOffset' OR procsummaries.trantype = 'Adj') AND procsummaries.procdate < @90_days_back THEN procsummaries.tranamount - procsummaries.instotest ELSE 0 END)
-        ) PatOver90,
+            (CASE WHEN (procsummaries.trantype = 'ProcSum' OR procsummaries.trantype = 'PPOffset' OR procsummaries.trantype = 'Adj') AND procsummaries.procdate < @120_days_back THEN procsummaries.tranamount - procsummaries.instotest ELSE 0 END)
+        ) PatOver120,
+        SUM(
+            (CASE WHEN (procsummaries.trantype = 'ProcSum' OR procsummaries.trantype = 'PPOffset' OR procsummaries.trantype = 'Adj') AND (procsummaries.procdate < @90_days_back AND procsummaries.procdate >= @120_days_back) THEN procsummaries.tranamount - procsummaries.instotest ELSE 0 END)
+        ) Pat_91_120,
         SUM(
             (CASE WHEN (procsummaries.trantype = 'ProcSum' OR procsummaries.trantype = 'PPOffset' OR procsummaries.trantype = 'Adj') AND (procsummaries.procdate < @60_days_back AND procsummaries.procdate >= @90_days_back) THEN procsummaries.tranamount - procsummaries.instotest ELSE 0 END)
         ) Pat_61_90,
@@ -234,4 +250,3 @@ FROM (
 ) ptsumnopaymt
 WHERE
     ptsumnopaymt.TotalBalance != 0
-    -- ptsumnopaymt.TotalArBalance != 0 OR ptsumnopaymt.TotalApBalance != 0
