@@ -249,4 +249,4 @@ FROM (
         procsummaries.patnum
 ) ptsumnopaymt
 WHERE
-    ptsumnopaymt.TotalBalance != 0
+    ptsumnopaymt.TotalBalance != 0 OR ptsumnopaymt.TotalPayPlan != 0
