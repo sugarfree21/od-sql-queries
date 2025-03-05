@@ -7,7 +7,7 @@ SELECT
     SUM(patasplit.negadj) NegAdj,
     SUM(patasplit.patpaymts) PayPaymts,
     SUM(patasplit.totbalance) TotBalance,
-    SUM(patasplit.insar) InsAR,
+    SUM(patasplit.insar) InsAR, -- The total amount of money that we expect insurance is going to pay us for claims submitted. 
     SUM(patasplit.patar) PatAR,
     SUM(patasplit.patap) PatAP,
     SUM(patasplit.ppowed) PPOwed

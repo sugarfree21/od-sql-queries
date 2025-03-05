@@ -16,8 +16,8 @@ SELECT
     SUM(ArDetailed.Pat_61_90) Pat_61_90,
     SUM(ArDetailed.Pat_31_60) Pat_31_60,
     SUM(ArDetailed.Pat_0_30) Pat_0_30,
-    SUM(ArDetailed.TotalArBalance) TotalArBalance,
-    SUM(ArDetailed.TotalApBalance) TotalApBalance,
+    SUM(ArDetailed.TotalArBalance) TotalArBalance, -- This is simply all procedures that have ever been completed minus all adjustments, patient payments, and insurance payments (where the end result is positive). 
+    SUM(ArDetailed.TotalApBalance) TotalApBalance, -- This is all procedures minus all adjustments, patient payments, and insurance payments where the end result is negative. 
     SUM(ArDetailed.TotalPayPlan) TotalPayPlan,
     SUM(ArDetailed.InsPayEst) InsPayEst,
     SUM(ArDetailed.InsWoEst) InsWoEst
@@ -266,5 +266,5 @@ FROM (
             procsummaries.patnum
     ) ptsumnopaymt
     WHERE
-        ptsumnopaymt.TotalBalance != 0 OR ptsumnopaymt.TotalPayPlan != 0
+        ptsumnopaymt.TotalBalance != 0 OR ptsumnopaymt.InsPayEst + ptsumnopaymt.InsWoEst != 0 OR ptsumnopaymt.TotalPayPlan != 0
 ) ArDetailed
