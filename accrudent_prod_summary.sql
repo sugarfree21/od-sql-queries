@@ -1,16 +1,16 @@
 SET @query_date = '2024-12-31'; -- This date is included
 
 SELECT
-    SUM(patasplit.rawproduction) RawProduction,
-    SUM(patasplit.totinspaymt) TotInsPaymt,
-    SUM(patasplit.posadj) PosAdj,
-    SUM(patasplit.negadj) NegAdj,
-    SUM(patasplit.patpaymts) PayPaymts,
-    SUM(patasplit.totbalance) TotBalance,
-    SUM(patasplit.insar) InsAR, -- The total amount of money that we expect insurance is going to pay us for claims submitted. 
-    SUM(patasplit.patar) PatAR,
-    SUM(patasplit.patap) PatAP,
-    SUM(patasplit.ppowed) PPOwed
+    SUM(pataccsplit.rawproduction) RawProduction,
+    SUM(pataccsplit.totinspaymt) TotInsPaymt,
+    SUM(pataccsplit.posadj) PosAdj,
+    SUM(pataccsplit.negadj) NegAdj,
+    SUM(pataccsplit.patpaymts) PayPaymts,
+    SUM(pataccsplit.totbalance) TotBalance,
+    SUM(pataccsplit.insar) InsAR, -- The total amount of money that we expect insurance is going to pay us for claims submitted. 
+    SUM(pataccsplit.patar) PatAR,
+    SUM(pataccsplit.patap) PatAP,
+    SUM(pataccsplit.ppowed) PPOwed
 FROM (
     SELECT
         patsums.patnum,
@@ -21,8 +21,8 @@ FROM (
         patsums.PatPaymts,
         patsums.TotBalance,
         patsums.InsAR,
-        (CASE WHEN patsums.patapr > 0 THEN patsums.patapr ELSE 0 END) PatAR,
-        (CASE WHEN patsums.patapr < 0 THEN patsums.patapr ELSE 0 END) PatAP,
+        (CASE WHEN patsums.patacc > 0 THEN patsums.patacc ELSE 0 END) PatAR,
+        (CASE WHEN patsums.patacc < 0 THEN patsums.patacc ELSE 0 END) PatAP,
         patsums.PPOwed
     FROM (
         SELECT
@@ -34,7 +34,7 @@ FROM (
             ROUND(SUM(CASE WHEN tranbyproc.trantype = 'PatPay' THEN tranbyproc.tranamount ELSE 0 END), 2) PatPaymts,
             ROUND(SUM(tranbyproc.tranamount), 2) TotBalance,
             ROUND(SUM(tranbyproc.instotest), 2) InsAR,
-            ROUND(SUM(tranbyproc.tranamount - tranbyproc.instotest), 2) PatApr,
+            ROUND(SUM(tranbyproc.tranamount - tranbyproc.instotest), 2) PatAcc,
             ROUND(SUM(tranbyproc.payplanamount), 2) PPOwed
         FROM (
             -- Complete procedures, not filtered by whether or not they've been paid.
@@ -170,4 +170,4 @@ FROM (
         GROUP BY
             tranbyproc.patnum
     ) patsums
-) patasplit
+) pataccsplit

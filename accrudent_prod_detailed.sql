@@ -9,8 +9,8 @@ SELECT
     patsums.PatPaymts,
     patsums.TotBalance,
     patsums.InsAR,
-    (CASE WHEN patsums.patapr > 0 THEN patsums.patapr ELSE 0 END) PatAR,
-    (CASE WHEN patsums.patapr < 0 THEN patsums.patapr ELSE 0 END) PatAP,
+    (CASE WHEN patsums.patacc > 0 THEN patsums.patacc ELSE 0 END) PatAR,
+    (CASE WHEN patsums.patacc < 0 THEN patsums.patacc ELSE 0 END) PatAP,
     patsums.PPOwed
 FROM (
     SELECT
@@ -22,7 +22,7 @@ FROM (
         ROUND(SUM(CASE WHEN tranbyproc.trantype = 'PatPay' THEN tranbyproc.tranamount ELSE 0 END), 2) PatPaymts,
         ROUND(SUM(tranbyproc.tranamount), 2) TotBalance,
         ROUND(SUM(tranbyproc.instotest), 2) InsAR,
-        ROUND(SUM(tranbyproc.tranamount - tranbyproc.instotest), 2) PatApr,
+        ROUND(SUM(tranbyproc.tranamount - tranbyproc.instotest), 2) PatAcc,
         ROUND(SUM(tranbyproc.payplanamount), 2) PPOwed
     FROM (
         -- Complete procedures, not filtered by whether or not they've been paid.
