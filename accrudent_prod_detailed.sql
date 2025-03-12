@@ -4,6 +4,7 @@ SELECT
     patsums.patnum,
     patsums.RawProduction,
     patsums.TotInsPaymt,
+    patsums.TotWo,
     patsums.PosAdj,
     patsums.NegAdj,
     patsums.PatPaymts,
@@ -17,10 +18,11 @@ FROM (
         tranbyproc.patnum,
         ROUND(SUM(CASE WHEN tranbyproc.trantype = 'Proc' OR tranbyproc.trantype = 'PPOffset' THEN tranbyproc.tranamount ELSE 0 END), 2) RawProduction,
         ROUND(SUM(CASE WHEN tranbyproc.trantype = 'ClaimProc' THEN tranbyproc.tranamount ELSE 0 END), 2) TotInsPaymt,
+        ROUND(SUM(tranbyproc.woamount), 2) TotWo,
         ROUND(SUM(CASE WHEN tranbyproc.trantype = 'Adj' AND tranbyproc.tranamount > 0 THEN tranbyproc.tranamount ELSE 0 END), 2) PosAdj,
         ROUND(SUM(CASE WHEN tranbyproc.trantype = 'Adj' AND tranbyproc.tranamount < 0 THEN tranbyproc.tranamount ELSE 0 END), 2) NegAdj,
         ROUND(SUM(CASE WHEN tranbyproc.trantype = 'PatPay' THEN tranbyproc.tranamount ELSE 0 END), 2) PatPaymts,
-        ROUND(SUM(tranbyproc.tranamount), 2) TotBalance,
+        ROUND(SUM(tranbyproc.tranamount) + SUM(tranbyproc.woamount), 2) TotBalance,
         ROUND(SUM(tranbyproc.instotest), 2) InsAR,
         ROUND(SUM(tranbyproc.tranamount - tranbyproc.instotest), 2) PatAcc,
         ROUND(SUM(tranbyproc.payplanamount), 2) PPOwed
@@ -33,6 +35,7 @@ FROM (
             pl.procdate TranDate, 
             pl.procdate ProcDate, 
             pl.procfee * (pl.unitqty + pl.baseunits) TranAmount, 
+            0 WoAmount,
             0 PayPlanAmount, 
             0 InsTotEst,
             0 InsWoEst, 
@@ -54,8 +57,13 @@ FROM (
             ( 
                 CASE WHEN cp.status != 0 AND cp.datecp <= @query_date THEN ( -- if the claim hasn't been received or it was received after the query date then 0. If the claim was received before the query date, and there's no payplan, then -inspayamt-writeoff. If the claim was received before the query date and there is a payplan, then 0
                     CASE WHEN cp.payplannum = 0 THEN - cp.inspayamt ELSE 0 END
-                ) - cp.writeoff ELSE 0 END
+                ) ELSE 0 END
             ) TranAmount, 
+            ( 
+                CASE WHEN cp.status != 0 AND cp.datecp <= @query_date THEN ( -- if the claim hasn't been received or it was received after the query date then 0. If the claim was received before the query date, and there's no payplan, then -inspayamt-writeoff. If the claim was received before the query date and there is a payplan, then 0
+                    CASE WHEN cp.payplannum = 0 THEN - cp.writeoff ELSE 0 END
+                ) ELSE 0 END
+            ) WoAmount,
             0 PayPlanAmount, 
             ( -- this will equate to 0 if the claim has been received, otherwise it's the whole amount insurance was billed
             CASE WHEN (cp.status = 0 OR (cp.status = 1 AND cp.datecp > @query_date)) THEN cp.inspayest + cp.writeoff ELSE 0 END
@@ -86,6 +94,7 @@ FROM (
             a.procdate TranDate, 
             a.procdate ProcDate,
             a.adjamt TranAmount, 
+            0 WoAmount,
             0 PayPlanAmount, 
             0 InsTotEst,
             0 InsWoEst, 
@@ -104,6 +113,7 @@ FROM (
             pp.payplandate TranDate, 
             pp.payplandate ProcDate,
             - pp.completedamt TranAmount, 
+            0 WoAmount, 
             0 PayPlanAmount, 
             0 InsTotEst,
             0 InsWoEst, 
@@ -122,6 +132,7 @@ FROM (
             pp.payplandate TranDate, 
             pp.payplandate ProcDate,
             0 TranAmount,
+            0 WoAmount,
             pp.completedamt PayPlanAmount, 
             0 InsTotEst,
             0 InsWoEst, 
@@ -142,6 +153,7 @@ FROM (
             ( -- the negative paysplit amount is put into TranAmount if there is no payplan
             CASE WHEN ps.payplannum = 0 THEN - ps.splitamt ELSE 0 END
             ) TranAmount, 
+            0 WoAmount,
             ( -- the negative paysplit amount is put into PayPlanAmount if there is an open payplan
             CASE WHEN ps.payplannum != 0 THEN - ps.splitamt ELSE 0 END
             ) PayPlanAmount, 
