@@ -16,7 +16,7 @@ SELECT
     SUM(ArDetailed.Pat_61_90) Pat_61_90,
     SUM(ArDetailed.Pat_31_60) Pat_31_60,
     SUM(ArDetailed.Pat_0_30) Pat_0_30,
-    SUM(ArDetailed.TotalArBalance) TotalArBalance, -- This is simply all procedures that have ever been completed minus all adjustments, patient payments, and insurance payments (where the end result is positive). 
+    SUM(ArDetailed.TotalArBalance) TotalArBalance, -- This is all procedures minus all adjustments, patient payments, and insurance payments (where the end result is positive). This number is different than InsAR + PatAR because patients often have pending ins payments that will make their balance negative, or rather, ins is going to overpay. 
     SUM(ArDetailed.TotalApBalance) TotalApBalance, -- This is all procedures minus all adjustments, patient payments, and insurance payments where the end result is negative. 
     SUM(ArDetailed.TotalPayPlan) TotalPayPlan,
     SUM(ArDetailed.InsPayEst) InsPayEst,
