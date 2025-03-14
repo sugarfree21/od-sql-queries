@@ -24,7 +24,7 @@ FROM (
         ROUND(SUM(CASE WHEN tranbyproc.trantype = 'PatPay' THEN tranbyproc.tranamount ELSE 0 END), 2) PatPaymts,
         ROUND(SUM(tranbyproc.tranamount) + SUM(tranbyproc.woamount), 2) TotBalance,
         ROUND(SUM(tranbyproc.instotest), 2) InsAR,
-        ROUND(SUM(tranbyproc.tranamount - tranbyproc.instotest), 2) PatAcc,
+        ROUND(SUM(tranbyproc.tranamount) + SUM(tranbyproc.woamount) - SUM(tranbyproc.instotest), 2) PatAcc,
         ROUND(SUM(tranbyproc.payplanamount), 2) PPOwed
     FROM (
         -- Complete procedures, not filtered by whether or not they've been paid.
@@ -55,12 +55,12 @@ FROM (
             cp.datecp TranDate, -- this is the date of the payment once it's been attached. I think that it's the date the claim was sent before that
             cp.procdate ProcDate, -- this is the date that the procedure was completed
             ( 
-                CASE WHEN cp.status != 0 AND cp.datecp <= @query_date THEN ( -- if the claim hasn't been received or it was received after the query date then 0. If the claim was received before the query date, and there's no payplan, then -inspayamt-writeoff. If the claim was received before the query date and there is a payplan, then 0
+                CASE WHEN cp.status != 0 AND cp.datecp <= @query_date THEN ( -- if the claim hasn't been received or it was received after the query date then 0. If the claim was received before the query date, and there's no payplan, then -inspayamt. If the claim was received before the query date and there is a payplan, then 0
                     CASE WHEN cp.payplannum = 0 THEN - cp.inspayamt ELSE 0 END
                 ) ELSE 0 END
             ) TranAmount, 
             ( 
-                CASE WHEN cp.status != 0 AND cp.datecp <= @query_date THEN ( -- if the claim hasn't been received or it was received after the query date then 0. If the claim was received before the query date, and there's no payplan, then -inspayamt-writeoff. If the claim was received before the query date and there is a payplan, then 0
+                CASE WHEN cp.status != 0 AND cp.datecp <= @query_date THEN ( -- if the claim hasn't been received or it was received after the query date then 0. If the claim was received before the query date, and there's no payplan, then -writeoff. If the claim was received before the query date and there is a payplan, then 0
                     CASE WHEN cp.payplannum = 0 THEN - cp.writeoff ELSE 0 END
                 ) ELSE 0 END
             ) WoAmount,
