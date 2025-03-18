@@ -68,12 +68,12 @@ FROM (
                 cp.datecp TranDate, -- this is the date of the payment once it's been attached. I think that it's the date the claim was sent before that
                 cp.procdate ProcDate, -- this is the date that the procedure was completed
                 ( 
-                    CASE WHEN cp.status != 0 AND cp.datecp <= @query_date THEN ( -- if the claim hasn't been received or it was received after the query date then 0. If the claim was received before the query date, and there's no payplan, then -inspayamt-writeoff. If the claim was received before the query date and there is a payplan, then 0
+                    CASE WHEN cp.status != 0 AND cp.datecp <= @query_date THEN ( -- if the claim hasn't been received or it was received after the query date then 0. If the claim was received before the query date, and there's no payplan, then -inspayamt. If the claim was received before the query date and there is a payplan, then 0
                         CASE WHEN cp.payplannum = 0 THEN - cp.inspayamt ELSE 0 END
                     ) ELSE 0 END
                 ) TranAmount, 
                 ( 
-                    CASE WHEN cp.status != 0 AND cp.datecp <= @query_date THEN ( -- if the claim hasn't been received or it was received after the query date then 0. If the claim was received before the query date, and there's no payplan, then -inspayamt-writeoff. If the claim was received before the query date and there is a payplan, then 0
+                    CASE WHEN cp.status != 0 AND cp.datecp <= @query_date THEN ( -- if the claim hasn't been received or it was received after the query date then 0. If the claim was received before the query date, and there's no payplan, then -writeoff. If the claim was received before the query date and there is a payplan, then 0
                         CASE WHEN cp.payplannum = 0 THEN - cp.writeoff ELSE 0 END
                     ) ELSE 0 END
                 ) WoAmount,
@@ -96,6 +96,7 @@ FROM (
                 AND cp.procdate <= @query_date -- only grabbing claims for procedures that took place before the query date
             HAVING 
                 tranamount != 0 
+                OR woamount != 0
                 OR inswoest != 0 
                 OR inspayest != 0 
             UNION ALL 

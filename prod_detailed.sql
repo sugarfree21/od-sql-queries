@@ -83,6 +83,7 @@ FROM (
             AND cp.procdate <= @query_date -- only grabbing claims for procedures that took place before the query date
         HAVING 
             tranamount != 0 
+            OR woamount != 0
             OR inswoest != 0 
             OR inspayest != 0 
         UNION ALL 
