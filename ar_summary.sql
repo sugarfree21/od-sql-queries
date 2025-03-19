@@ -252,9 +252,10 @@ FROM (
                 FROM 
                     paysplit ps 
                     LEFT JOIN payplan pp ON ps.payplannum = pp.payplannum -- Just here to filter for open payplans
+                    LEFT JOIN payment p ON ps.paynum = p.paynum
                 WHERE 
                     ps.splitamt != 0 AND ps.datepay <= @query_date AND (ps.payplannum = 0 OR (ps.payplannum != 0 AND pp.isclosed = 0))
-                    AND ps.datepay <= @query_date
+                    AND p.dateentry <= @query_date
             ) tranbyproc
             GROUP BY
                 patnum,

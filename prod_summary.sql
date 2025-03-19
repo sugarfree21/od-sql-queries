@@ -10,7 +10,7 @@ SELECT
     SUM(pataccsplit.totbalance) TotBalance,
     SUM(pataccsplit.insar) InsAR, -- The total amount of money that we expect insurance is going to pay us for claims submitted. 
     SUM(pataccsplit.patar) PatAR,
-    SUM(pataccsplit.patap) PatAP,
+    SUM(pataccsplit.patap) PatAP, -- All negative patient accounts when you consider production - inspay - writeoffs - adjustments - paypay - estimated ins pay & writeoffs. Ideally the estimated ins pay & writeoffs doesn't push the patient account negative, but it happens occasionally. 
     SUM(pataccsplit.ppowed) PPOwed
 FROM (
     SELECT
@@ -177,9 +177,10 @@ FROM (
             FROM 
                 paysplit ps 
                 LEFT JOIN payplan pp ON ps.payplannum = pp.payplannum -- Just here to filter for open payplans
+                LEFT JOIN payment p ON ps.paynum = p.paynum
             WHERE 
                 ps.splitamt != 0 AND ps.datepay <= @query_date AND (ps.payplannum = 0 OR (ps.payplannum != 0 AND pp.isclosed = 0))
-                AND ps.datepay <= @query_date
+                AND p.dateentry <= @query_date
         ) tranbyproc
         GROUP BY
             tranbyproc.patnum
