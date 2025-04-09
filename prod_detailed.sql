@@ -3,8 +3,10 @@ SET @query_date = '2024-12-31'; -- This date is included
 SELECT
     patsums.patnum,
     patsums.RawProduction,
+    patsums.CorrectedProd,
     patsums.TotInsPaymt,
     patsums.TotWo,
+    (CASE WHEN - patsums.totwo > patsums.rawproduction - patsums.correctedprod THEN patsums.totwo + (patsums.rawproduction - patsums.correctedprod) ELSE 0 END) CorrectedWo,
     patsums.PosAdj,
     patsums.NegAdj,
     patsums.PatPaymts,
@@ -17,6 +19,7 @@ FROM (
     SELECT
         tranbyproc.patnum,
         ROUND(SUM(CASE WHEN tranbyproc.trantype = 'Proc' OR tranbyproc.trantype = 'PPOffset' THEN tranbyproc.tranamount ELSE 0 END), 2) RawProduction,
+        ROUND(SUM(tranbyproc.corprod), 2) CorrectedProd,
         ROUND(SUM(CASE WHEN tranbyproc.trantype = 'ClaimProc' THEN tranbyproc.tranamount ELSE 0 END), 2) TotInsPaymt,
         ROUND(SUM(tranbyproc.woamount), 2) TotWo,
         ROUND(SUM(CASE WHEN tranbyproc.trantype = 'Adj' AND tranbyproc.tranamount > 0 THEN tranbyproc.tranamount ELSE 0 END), 2) PosAdj,
@@ -35,6 +38,7 @@ FROM (
             pl.procdate TranDate, 
             pl.procdate ProcDate, 
             pl.procfee * (pl.unitqty + pl.baseunits) TranAmount, 
+            0 CorProd,
             0 WoAmount,
             0 PayPlanAmount, 
             0 InsTotEst,
@@ -46,6 +50,32 @@ FROM (
             pl.procstatus = 2 -- This is an important assumption, we're only grabbing procedures of status 2, or that are complete
             AND pl.procfee != 0 
             AND pl.procdate <= @query_date
+        UNION ALL
+        -- Corrected production numbers based on actual fee schedules, not UCR
+        SELECT
+            'CorProd' TranType,
+            pl.procnum ProcNum,
+            pl.patnum,
+            pl.procdate TranDate,
+            pl.procdate ProcDate,
+            0 TranAmount,
+            (CASE WHEN cp.claimprocnum IS NULL OR ip.plannum IS NULL OR ip.feesched = '' OR f.feenum IS NULL OR pl.procfee < f.amount THEN pl.procfee * (pl.unitqty + pl.baseunits) ELSE f.amount * (pl.unitqty + pl.baseunits) END) CorProd,
+            0 WoAmount,
+            0 PayPlanAmount, 
+            0 InsTotEst,
+            0 InsWoEst, 
+            0 InsPayEst
+        FROM
+            procedurelog pl
+            left join claimproc cp on pl.procnum = cp.procnum
+            left join insplan ip on cp.plannum = ip.plannum
+            left join fee f on pl.codenum = f.codenum and ip.feesched = f.feesched
+        WHERE 
+            pl.procstatus = 2 -- This is an important assumption, we're only grabbing procedures of status 2, or that are complete
+            AND pl.procfee != 0 
+            AND pl.procdate <= @query_date
+        GROUP BY
+            pl.procnum -- Correcting an error where there are multiple claimprocs to a single proc
         UNION ALL 
         -- All procedures that have been billed out to insurance, either showing the total cost of the procedure (actual pay + writeoff) or estimates for both values. This is true even if the claim has been denied
         SELECT 
@@ -59,6 +89,7 @@ FROM (
                     CASE WHEN cp.payplannum = 0 THEN - cp.inspayamt ELSE 0 END
                 ) ELSE 0 END
             ) TranAmount, 
+            0 CorProd,
             ( 
                 CASE WHEN cp.status != 0 AND cp.datecp <= @query_date THEN ( -- if the claim hasn't been received or it was received after the query date then 0. If the claim was received before the query date, and there's no payplan, then -writeoff. If the claim was received before the query date and there is a payplan, then 0
                     CASE WHEN cp.payplannum = 0 THEN - cp.writeoff ELSE 0 END
@@ -95,6 +126,7 @@ FROM (
             a.procdate TranDate, 
             a.procdate ProcDate,
             a.adjamt TranAmount, 
+            0 CorProd,
             0 WoAmount,
             0 PayPlanAmount, 
             0 InsTotEst,
@@ -114,6 +146,7 @@ FROM (
             pp.payplandate TranDate, 
             pp.payplandate ProcDate,
             - pp.completedamt TranAmount, 
+            - pp.completedamt CorProd,
             0 WoAmount, 
             0 PayPlanAmount, 
             0 InsTotEst,
@@ -133,6 +166,7 @@ FROM (
             pp.payplandate TranDate, 
             pp.payplandate ProcDate,
             0 TranAmount,
+            0 CorProd,
             0 WoAmount,
             pp.completedamt PayPlanAmount, 
             0 InsTotEst,
@@ -154,6 +188,7 @@ FROM (
             ( -- the negative paysplit amount is put into TranAmount if there is no payplan
             CASE WHEN ps.payplannum = 0 THEN - ps.splitamt ELSE 0 END
             ) TranAmount, 
+            0 CorProd,
             0 WoAmount,
             ( -- the negative paysplit amount is put into PayPlanAmount if there is an open payplan
             CASE WHEN ps.payplannum != 0 THEN - ps.splitamt ELSE 0 END
